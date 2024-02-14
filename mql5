@@ -1,0 +1,97 @@
+
+// Live Bot Maker
+// Developed by Forex Robot Easy Team
+// Website: forexroboteasy.com
+
+// Include necessary libraries and dependencies
+#include <Trade\Trade.mqh>
+#include <Trade\PositionInfo.mqh>
+#include <Trade\TradeConstants.mqh>
+#include <Expert\Expert.mqh>
+#include <Expert\Signal.mqh>
+
+// Define constants for trading parameters
+input double entryPoint = 1.2000;
+input double exitPoint = 1.2200;
+input double stopLoss = 1.1900;
+input double takeProfit = 1.2300;
+
+// Initialize trading bot
+CExpert advisor;
+
+// Define market analysis tools (e.g., moving averages, oscillators, etc.)
+// Insert your market analysis tools and indicators here
+
+// Define risk management parameters
+input double riskPercentage = 2.0;
+double lotSize;
+
+// Define variables for tracking open trades
+int totalTrades = 0;
+double totalProfit = 0.0;
+
+// Initialize trade execution function
+void ExecuteTrade()
+{
+    // Calculate lot size based on risk percentage
+    lotSize = AccountBalance() * riskPercentage / 100 / (MathAbs(SymbolOpenPrice() - stopLoss));
+
+    // Set stop loss and take profit levels
+    advisor.PositionSetDouble(POSITION_SL, stopLoss);
+    advisor.PositionSetDouble(POSITION_TP, takeProfit);
+
+    // Execute trade based on user-defined trading parameters
+    if (SymbolInfoInteger(_Symbol, SYMBOL_TRADE_ALLOWED) && SymbolInfoInteger(_Symbol, SYMBOL_TRADE_MODE) != TRADE_MODE_DISABLED)
+    {
+        if (SymbolInfoDouble(_Symbol, SYMBOL_ASK) >= entryPoint)
+        {
+            if (advisor.PositionOpen(_Symbol, TRADE_ACTION_DEAL, TRADE_VOLUME_SPECIFIED, lotSize, 0, 0, '', 0, 0, 0, entryPoint))
+            {
+                totalTrades++;
+            }
+        }
+    }
+}
+
+// Initialize trade monitoring function
+void MonitorTrades()
+{
+    // Retrieve open positions
+    CPositionInfo position;
+    if (position.Select(_Symbol))
+    {
+        // Calculate profit and loss for each open position
+        for (int i = 0; i < position.Total(); i++)
+        {
+            position.SelectByIndex(i);
+            totalProfit += position.Profit();
+        }
+    }
+}
+
+// Initialize the Expert Advisor
+int OnInit()
+{
+    // Enable automatic trading
+    advisor.ExpertRemove();
+    advisor.ExpertAdd();
+
+    return INIT_SUCCEEDED;
+}
+
+// Execute trading logic
+void OnTick()
+{
+    // Execute trades based on trading parameters
+    ExecuteTrade();
+
+    // Monitor open trades
+    MonitorTrades();
+}
+
+// Clean up resources
+void OnDeinit(const int reason)
+{
+    // Remove the Expert Advisor
+    advisor.ExpertRemove();
+}
